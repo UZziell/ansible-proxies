@@ -15,6 +15,7 @@ alternative_ssh_port: 22222
 configure_systemd_resolved: false
 resolved_alternative_local_listen_port: 5300
 harden_linux: true
+force_safe_upgrade: true 
 
 # Change with CAUTION
 force_dist_upgrade: false

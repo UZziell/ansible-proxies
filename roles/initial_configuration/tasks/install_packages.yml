@@ -9,6 +9,7 @@
   ansible.builtin.apt:
     upgrade: "safe"
     force_apt_get: true
+  when: force_safe_upgrade
 
 - name: Apt dist-upgrade (potentially unsafe)
   ansible.builtin.apt:
