@@ -22,20 +22,20 @@
          if is_dev  | default(false) 
          else 'production' }}
 
-- name: Check if SSH public key exists for user
-  ansible.builtin.stat:
-    path: "{{ role_path }}/files/public_keys/{{ item.user }}_{{ auth_key_env }}.pub.key"
-  register: ssh_key_file
-  delegate_to: localhost
-  become: false
-  run_once: true
+- name: "Set fact | Determine SSH Key Source"
+  ansible.builtin.set_fact:
+    current_key_secret: "{{ lookup('env', 'SSH_KEY_' + item.user | replace('.', '_') + '_' + auth_key_env, default='') }}"
+    current_key_path: "{{ role_path }}/files/public_keys/{{ item.user }}_{{ auth_key_env }}.pub.key"
 
-- name: Ensure correct authorized key is installed for each user
+- name: Ensure authorized key is installed for user
   ansible.posix.authorized_key:
     user: "{{ item.user }}"
-    key: "{{ lookup('file', 'public_keys/' + item.user + '_' + auth_key_env + '.pub.key') }}"
     state: present
     comment: "{{ item.user }}@{{ auth_key_env }}-ManagedByAnsible"
+    # Use the secret from semaphore if found, otherwise perform the file lookup
+    key: >-
+      {{ current_key_secret if current_key_secret != '' 
+         else lookup('file', current_key_path, errors='ignore') }}
   when:
     - auth_key_env is defined
-    - ssh_key_file.stat.exists
+    - (current_key_secret != '') or (current_key_path is file)

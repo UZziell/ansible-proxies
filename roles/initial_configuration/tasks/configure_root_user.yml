@@ -22,17 +22,27 @@
     password: "{{ root_password | password_hash('sha512') }}"
   when: force_change_root_password
 
-- name: Determine authorized‐key environment suffix
+- name: Set fact | Determine authorized‐key environment suffix
   ansible.builtin.set_fact:
     auth_key_env: >-
       {{ 'dev' 
          if is_dev  | default(false) 
          else 'production' }}
 
-- name: Ensure correct authorized key is installed for root
+- name: "Set fact | Determine SSH Key Source"
+  ansible.builtin.set_fact:
+    current_key_secret: "{{ lookup('env', 'SSH_KEY_root' + '_' + auth_key_env, default='') }}"
+    current_key_path: "{{ role_path }}/files/public_keys/root_{{ auth_key_env }}.pub.key"
+
+- name: Ensure authorized key is installed for root
   ansible.posix.authorized_key:
-    user: root
-    key: "{{ lookup('file', 'public_keys/' + 'root' + '_' + auth_key_env + '.pub.key') }}"
+    user: "root"
     state: present
     comment: "root@{{ auth_key_env }}-ManagedByAnsible"
-  when: auth_key_env is defined
+    # Use the secret from semaphore if found, otherwise perform the file lookup
+    key: >-
+      {{ current_key_secret if current_key_secret != '' 
+         else lookup('file', current_key_path, errors='ignore') }}
+  when:
+    - auth_key_env is defined
+    - (current_key_secret != '') or (current_key_path is file)
