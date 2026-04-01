@@ -78,11 +78,28 @@
       docker compose logs --since 10m -f
 
 - name: Configure tmux
-  ansible.builtin.lineinfile:
+  ansible.builtin.blockinfile:
     path: $HOME/.tmux.conf
-    line: setw -g mouse on
     create: true
     mode: "0600"
+    block: |
+      setw -g mouse on
+
+      # List of plugins
+      set -g @plugin 'tmux-plugins/tpm'
+      set -g @plugin 'tmux-plugins/tmux-resurrect'
+      set -g @plugin 'tmux-plugins/tmux-continuum'
+
+      # Enable automatic restore
+      set -g @continuum-restore 'on'
+
+      # If TPM isn't installed, clone it and install all plugins
+      if "test ! -d ~/.tmux/plugins/tpm" \
+        "run 'git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm && ~/.tmux/plugins/tpm/bin/install_plugins'"
+
+      # Initialize TPM
+      run '~/.tmux/plugins/tpm/tpm'
+
 
 - name: Configure vim
   ansible.builtin.lineinfile:
